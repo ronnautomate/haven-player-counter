@@ -2,7 +2,7 @@ import os
 import requests
 
 SERVER_IP = "haven.smpserver.net"
-CHANNEL_ID = "PUT_YOUR_CHANNEL_ID_HERE"
+CHANNEL_ID = "1555444801694867476"
 
 DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
 
