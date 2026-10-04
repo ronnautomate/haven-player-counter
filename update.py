@@ -15,26 +15,30 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-CHECK_INTERVAL = 10  # seconds
+CHECK_INTERVAL = 300  # 5 minutes
 last_channel_name = None
 
 while True:
     try:
-        # Check Minecraft server
         response = requests.get(MC_API_URL, timeout=15)
         response.raise_for_status()
         data = response.json()
+
+        print("Minecraft API response:")
+        print(data)
 
         if data.get("online"):
             players = data.get("players", {})
             online = players.get("online", 0)
             maximum = players.get("max", 0)
 
+            print(f"API PLAYER COUNT: {online}/{maximum}")
+
             channel_name = f"{online}/{maximum} online"
         else:
+            print("SERVER REPORTED OFFLINE")
             channel_name = "Offline"
 
-        # Only update Discord if something changed
         if channel_name != last_channel_name:
             response = requests.patch(
                 DISCORD_URL,
@@ -51,7 +55,6 @@ while True:
                     f"Discord update failed: "
                     f"{response.status_code} {response.text}"
                 )
-
         else:
             print(f"No change: {channel_name}")
 
