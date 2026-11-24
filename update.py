@@ -1,13 +1,14 @@
+
 import os
 import time
 import requests
+from mcstatus import JavaServer
 
-SERVER_IP = "haven.smpserver.net"
+SERVER_ADDRESS = "haven.smpserver.net"
 CHANNEL_ID = "1555444801694867476"
 
 DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
 
-MC_API_URL = f"https://api.mcsrvstat.us/3/{SERVER_IP}"
 DISCORD_URL = f"https://discord.com/api/v10/channels/{CHANNEL_ID}"
 
 HEADERS = {
@@ -15,50 +16,48 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-CHECK_INTERVAL = 300  # 5 minutes
+CHECK_INTERVAL = 15
+RUN_FOR_SECONDS = 240
+
+server = JavaServer.lookup(SERVER_ADDRESS)
+
 last_channel_name = None
+deadline = time.monotonic() + RUN_FOR_SECONDS
 
-while True:
+print("Haven Player Counter started")
+
+while time.monotonic() < deadline:
     try:
-        response = requests.get(MC_API_URL, timeout=15)
-        response.raise_for_status()
-        data = response.json()
+        status = server.status()
 
-        print("Minecraft API response:")
-        print(data)
+        online = status.players.online
+        maximum = status.players.max
 
-        if data.get("online"):
-            players = data.get("players", {})
-            online = players.get("online", 0)
-            maximum = players.get("max", 0)
+        channel_name = f"{online}/{maximum} online"
 
-            print(f"API PLAYER COUNT: {online}/{maximum}")
-
-            channel_name = f"{online}/{maximum} online"
-        else:
-            print("SERVER REPORTED OFFLINE")
-            channel_name = "Offline"
+        print(f"Minecraft players: {channel_name}")
 
         if channel_name != last_channel_name:
             response = requests.patch(
                 DISCORD_URL,
                 headers=HEADERS,
                 json={"name": channel_name},
-                timeout=15
+                timeout=10
             )
 
-            if response.ok:
-                print(f"Updated Discord: {channel_name}")
-                last_channel_name = channel_name
-            else:
-                print(
-                    f"Discord update failed: "
-                    f"{response.status_code} {response.text}"
-                )
+            response.raise_for_status()
+
+            last_channel_name = channel_name
+            print(f"Discord updated: {channel_name}")
         else:
-            print(f"No change: {channel_name}")
+            print("No change needed")
 
-    except Exception as e:
-        print(f"Error: {e}")
+    except Exception as error:
+        print(f"Update error: {error}")
 
-    time.sleep(CHECK_INTERVAL)
+    remaining = deadline - time.monotonic()
+
+    if remaining > 0:
+        time.sleep(min(CHECK_INTERVAL, remaining))
+
+print("Player counter finished successfully")
